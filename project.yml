@@ -1,0 +1,66 @@
+name: AirportWidget
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  AirportWidget:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/App
+      - Sources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.airportwidget
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: 机场流量
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1"
+    entitlements:
+      path: Sources/App/AirportWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.example.airportwidget
+    dependencies:
+      - target: AirportWidgetExtension
+
+  AirportWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Sources/Widget
+      - Sources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.airportwidget.widget
+        INFOPLIST_KEY_CFBundleDisplayName: 机场流量小组件
+        TARGETED_DEVICE_FAMILY: "1"
+    entitlements:
+      path: Sources/Widget/AirportWidgetExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.example.airportwidget
+    info:
+      path: Sources/Widget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+schemes:
+  AirportWidget:
+    build:
+      targets:
+        AirportWidget: all
+    run:
+      config: Debug
+    archive:
+      config: Release
