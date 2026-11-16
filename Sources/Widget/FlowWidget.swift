@@ -41,6 +41,14 @@ struct FlowWidgetView: View {
     var entry: FlowEntry
 
     var body: some View {
+        if #available(iOS 17.0, *) {
+            content.containerBackground(.fill.tertiary, for: .widget)
+        } else {
+            content.background(Color(uiColor: .systemBackground))
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(entry.name)
@@ -77,7 +85,6 @@ struct FlowWidgetView: View {
             }
         }
         .padding(.horizontal, 16)
-        .containerBackground(.fill.tertiary, for: .widget)
     }
 
     private var ratioColor: Color {
