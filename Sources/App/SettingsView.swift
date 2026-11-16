@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var cfg = SharedStore.load()
     @State private var usage: Usage?
     @State private var pingMs: Int?
+    @State private var exitInfo = ExitInfo()
     @State private var pingTarget: String = ""
     @State private var status: String = ""
     @State private var busy = false
@@ -46,6 +47,8 @@ struct SettingsView: View {
                 }
 
                 Section("当前数据") {
+                    row("出口 IP", exitInfo.ok ? exitInfo.ip : "—")
+                    row("归属地", exitInfo.ok ? exitInfo.location : "—")
                     row("剩余流量", usage.map { Net.formatBytes($0.remain) } ?? "—")
                     row("已用 / 总量", usage.map { "\(Net.formatBytes($0.used)) / \(Net.formatBytes($0.total))" } ?? "—")
                     row("到期", usage.map { Net.formatDate($0.expire) } ?? "—")
@@ -92,8 +95,10 @@ struct SettingsView: View {
         busy = true
         status = "请求订阅…"
 
+        async let exitTask = Net.fetchExit()
         let result = await Net.fetchSubscription(cfg.subUrl)
         usage = result.0
+        exitInfo = await exitTask
 
         if cfg.pingAuto {
             let nodes = Net.parseNodes(result.1)
