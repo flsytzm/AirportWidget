@@ -22,6 +22,12 @@ struct NodeServer {
     var port: Int
 }
 
+struct ExitInfo {
+    var ip: String = ""
+    var location: String = ""
+    var ok: Bool { !ip.isEmpty }
+}
+
 enum SharedStore {
     static let appGroup = "group.com.example.airportwidget"
     static let configKey = "airportConfig"
@@ -121,6 +127,26 @@ enum Net {
             }
         }
         return (nil, "")
+    }
+
+    static func fetchExit() async -> ExitInfo {
+        for u in ["https://ipinfo.io/json", "https://ipapi.co/json/"] {
+            guard let url = URL(string: u) else { continue }
+            var req = URLRequest(url: url)
+            req.timeoutInterval = 10
+            req.setValue("Mozilla/5.0 (iPhone)", forHTTPHeaderField: "User-Agent")
+            guard let (data, _) = try? await URLSession.shared.data(for: req),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            let ip = (obj["ip"] as? String) ?? ""
+            let city = (obj["city"] as? String) ?? ""
+            let region = (obj["region"] as? String) ?? (obj["region_name"] as? String) ?? ""
+            let country = (obj["country_name"] as? String) ?? (obj["country"] as? String) ?? ""
+            if !ip.isEmpty {
+                let parts = [country, region, city].filter { !$0.isEmpty }
+                return ExitInfo(ip: ip, location: parts.joined(separator: " · "))
+            }
+        }
+        return ExitInfo()
     }
 
     static func tcpPing(host: String, port: Int, timeout: Double = 6) async -> Int? {
