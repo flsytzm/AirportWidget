@@ -32,6 +32,8 @@ targets:
           - group.com.example.airportwidget
     dependencies:
       - target: AirportWidgetExtension
+        embed: true
+        codeSign: true
 
   AirportWidgetExtension:
     type: app-extension
