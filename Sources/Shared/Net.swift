@@ -3,11 +3,27 @@ import Network
 
 struct AirportConfig: Codable {
     var name: String = ""
+    var targetName: String = ""
+    var targetUrl: String = ""
     var subUrl: String = ""
     var refreshMinutes: Int = 60
     var pingHost: String = ""
     var pingPort: Int = 443
     var pingAuto: Bool = true
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = (try? c.decode(String.self, forKey: .name)) ?? ""
+        targetName = (try? c.decode(String.self, forKey: .targetName)) ?? ""
+        targetUrl = (try? c.decode(String.self, forKey: .targetUrl)) ?? ""
+        subUrl = (try? c.decode(String.self, forKey: .subUrl)) ?? ""
+        refreshMinutes = (try? c.decode(Int.self, forKey: .refreshMinutes)) ?? 60
+        pingHost = (try? c.decode(String.self, forKey: .pingHost)) ?? ""
+        pingPort = (try? c.decode(Int.self, forKey: .pingPort)) ?? 443
+        pingAuto = (try? c.decode(Bool.self, forKey: .pingAuto)) ?? true
+    }
 }
 
 struct Usage {
@@ -147,6 +163,25 @@ enum Net {
             }
         }
         return ExitInfo()
+    }
+
+    static func httpPing(_ raw: String, timeout: Double = 12) async -> Int? {
+        var t = clean(raw)
+        guard !t.isEmpty else { return nil }
+        if !t.lowercased().hasPrefix("http") { t = "https://" + t }
+        guard let url = URL(string: t) else { return nil }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = timeout
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)", forHTTPHeaderField: "User-Agent")
+        let start = DispatchTime.now()
+        do {
+            _ = try await URLSession.shared.data(for: req)
+            let ns = DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds
+            return Int(ns / 1_000_000)
+        } catch {
+            return nil
+        }
     }
 
     static func tcpPing(host: String, port: Int, timeout: Double = 6) async -> Int? {
