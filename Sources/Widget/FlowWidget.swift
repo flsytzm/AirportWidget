@@ -51,7 +51,7 @@ struct FlowProvider: TimelineProvider {
                                   usage: sub.0,
                                   pingMs: ms,
                                   exit: exitInfo)
-            let minutes = max(1, cfg.refreshMinutes)
+            let minutes = max(15, max(1, cfg.refreshSeconds) / 60)
             let next = Calendar.current.date(byAdding: .minute, value: minutes, to: Date()) ?? Date().addingTimeInterval(3600)
             completion(Timeline(entries: [entry], policy: .after(next)))
         }
