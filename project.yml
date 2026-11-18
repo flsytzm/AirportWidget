@@ -24,11 +24,17 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: 机场流量
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
     info:
       path: Sources/App/Info.plist
       properties:
         CFBundleDisplayName: 机场流量
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
     entitlements:
       path: Sources/App/AirportWidget.entitlements
       properties:
