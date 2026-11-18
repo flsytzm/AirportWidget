@@ -148,39 +148,93 @@ enum Net {
     }
 
     static func fetchExit() async -> ExitInfo {
-        for u in ["https://ipinfo.io/json", "https://ipapi.co/json/"] {
-            guard let url = URL(string: u) else { continue }
-            var req = URLRequest(url: url)
-            req.timeoutInterval = 10
-            req.setValue("Mozilla/5.0 (iPhone)", forHTTPHeaderField: "User-Agent")
-            guard let (data, _) = try? await URLSession.shared.data(for: req),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
-            let ip = (obj["ip"] as? String) ?? ""
-            let city = (obj["city"] as? String) ?? ""
-            let region = (obj["region"] as? String) ?? (obj["region_name"] as? String) ?? ""
-            let country = (obj["country_name"] as? String) ?? (obj["country"] as? String) ?? ""
-            if !ip.isEmpty {
-                let parts = [country, region, city].filter { !$0.isEmpty }
-                return ExitInfo(ip: ip, location: parts.joined(separator: " · "))
+        let urls = [
+            "https://ipwho.is/",
+            "https://ipinfo.io/json",
+            "https://ipapi.co/json/",
+            "https://api.ip.sb/geoip"
+        ]
+        return await withTaskGroup(of: ExitInfo?.self) { group in
+            for u in urls {
+                group.addTask { await probeExit(u) }
             }
+            for await r in group {
+                if let r = r {
+                    group.cancelAll()
+                    return r
+                }
+            }
+            return ExitInfo()
         }
-        return ExitInfo()
     }
+
+    private static func probeExit(_ u: String) async -> ExitInfo? {
+        guard let url = URL(string: u) else { return nil }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 8
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)", forHTTPHeaderField: "User-Agent")
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+
+        let ip = (obj["ip"] as? String) ?? (obj["query"] as? String) ?? ""
+        guard !ip.isEmpty else { return nil }
+
+        let countryRaw = (obj["country"] as? String) ?? (obj["country_name"] as? String) ?? ""
+        let country: String
+        if countryRaw.count == 2 {
+            country = Locale(identifier: "en_US").localizedString(forRegionCode: countryRaw.uppercased()) ?? countryRaw
+        } else {
+            country = countryRaw
+        }
+        let region = (obj["region"] as? String) ?? (obj["region_name"] as? String) ?? ""
+        let city = (obj["city"] as? String) ?? ""
+
+        let parts = [country, region, city].filter { !$0.isEmpty }
+        return ExitInfo(ip: ip, location: parts.joined(separator: " · "))
+    }
+
+    private static let netSession: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.requestCachePolicy = .reloadIgnoringLocalCacheData
+        c.httpMaximumConnectionsPerHost = 4
+        c.timeoutIntervalForRequest = 12
+        c.waitsForConnectivity = false
+        return URLSession(configuration: c)
+    }()
+
+    private static let warmLock = NSLock()
+    private static var warmedHosts: Set<String> = []
 
     static func httpPing(_ raw: String, timeout: Double = 12) async -> Int? {
         var t = clean(raw)
         guard !t.isEmpty else { return nil }
         if !t.lowercased().hasPrefix("http") { t = "https://" + t }
-        guard let url = URL(string: t) else { return nil }
+        guard let url = URL(string: t), let host = url.host, !host.isEmpty else { return nil }
+
         var req = URLRequest(url: url)
         req.timeoutInterval = timeout
         req.cachePolicy = .reloadIgnoringLocalCacheData
         req.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)", forHTTPHeaderField: "User-Agent")
+
+        warmLock.lock()
+        let needWarm = !warmedHosts.contains(host)
+        if needWarm { warmedHosts.insert(host) }
+        warmLock.unlock()
+        if needWarm {
+            _ = try? await netSession.data(for: req)
+        }
+
         let start = DispatchTime.now()
         do {
-            _ = try await URLSession.shared.data(for: req)
+            let (bytes, _) = try await netSession.bytes(for: req)
+            var gotByte = false
+            for try await _ in bytes {
+                gotByte = true
+                break
+            }
             let ns = DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds
-            return Int(ns / 1_000_000)
+            return gotByte ? Int(ns / 1_000_000) : nil
         } catch {
             return nil
         }
