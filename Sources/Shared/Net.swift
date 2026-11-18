@@ -7,6 +7,7 @@ struct AirportConfig: Codable {
     var targetUrl: String = ""
     var subUrl: String = ""
     var refreshMinutes: Int = 60
+    var refreshSeconds: Int = 30
     var pingHost: String = ""
     var pingPort: Int = 443
     var pingAuto: Bool = true
@@ -20,6 +21,7 @@ struct AirportConfig: Codable {
         targetUrl = (try? c.decode(String.self, forKey: .targetUrl)) ?? ""
         subUrl = (try? c.decode(String.self, forKey: .subUrl)) ?? ""
         refreshMinutes = (try? c.decode(Int.self, forKey: .refreshMinutes)) ?? 60
+        refreshSeconds = (try? c.decode(Int.self, forKey: .refreshSeconds)) ?? 30
         pingHost = (try? c.decode(String.self, forKey: .pingHost)) ?? ""
         pingPort = (try? c.decode(Int.self, forKey: .pingPort)) ?? 443
         pingAuto = (try? c.decode(Bool.self, forKey: .pingAuto)) ?? true
