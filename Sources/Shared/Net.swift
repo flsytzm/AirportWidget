@@ -55,17 +55,21 @@ enum SharedStore {
     }
 
     static func load() -> AirportConfig {
-        guard let data = defaults.data(forKey: configKey),
-              let cfg = try? JSONDecoder().decode(AirportConfig.self, from: data) else {
-            return AirportConfig()
+        if let data = defaults.data(forKey: configKey),
+           let cfg = try? JSONDecoder().decode(AirportConfig.self, from: data) {
+            return cfg
         }
-        return cfg
+        if let data = UserDefaults.standard.data(forKey: configKey),
+           let cfg = try? JSONDecoder().decode(AirportConfig.self, from: data) {
+            return cfg
+        }
+        return AirportConfig()
     }
 
     static func save(_ cfg: AirportConfig) {
-        if let data = try? JSONEncoder().encode(cfg) {
-            defaults.set(data, forKey: configKey)
-        }
+        guard let data = try? JSONEncoder().encode(cfg) else { return }
+        defaults.set(data, forKey: configKey)
+        UserDefaults.standard.set(data, forKey: configKey)
     }
 }
 
