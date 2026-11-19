@@ -25,13 +25,14 @@ struct FlowProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<FlowEntry>) -> Void) {
         Task {
             let cfg = SharedStore.load()
+            let targetName = cfg.targetName.isEmpty ? (cfg.name.isEmpty ? "YouTube" : cfg.name) : cfg.targetName
+            let targetUrl = cfg.targetUrl.isEmpty ? "www.youtube.com" : cfg.targetUrl
+
             async let exitTask = Net.fetchExit()
             async let subTask = Net.fetchSubscription(cfg.subUrl)
 
             var ms: Int?
-            if !cfg.targetUrl.isEmpty {
-                ms = await Net.httpPing(cfg.targetUrl)
-            }
+            ms = await Net.httpPing(targetUrl)
 
             let exitInfo = await exitTask
             let sub = await subTask
@@ -47,7 +48,7 @@ struct FlowProvider: TimelineProvider {
             }
 
             let entry = FlowEntry(date: Date(),
-                                  targetName: cfg.targetName.isEmpty ? (cfg.name.isEmpty ? "代理 IP" : cfg.name) : cfg.targetName,
+                                  targetName: targetName,
                                   usage: sub.0,
                                   pingMs: ms,
                                   exit: exitInfo)
